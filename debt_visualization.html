@@ -408,7 +408,7 @@
             const remainingVars = variablesToPlot.slice(1);
             
             // Get beginning and ending Debt-to-GDP values from actual CSV data
-            const prev = getPreviousQuarter(startYear, startQuarter);
+            // Reuse the 'prev' variable already declared earlier in this function
             const beginningQtr = `${prev.year}Q${prev.quarter}`;
             const beginningRow = csvData.find(row => row.quarter === beginningQtr);
             const beginningDebtToGDP = beginningRow && beginningRow.mv_debt_to_GDP ? beginningRow.mv_debt_to_GDP : 0;
