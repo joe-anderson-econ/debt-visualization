@@ -411,10 +411,10 @@
             const prev = getPreviousQuarter(startYear, startQuarter);
             const beginningQtr = `${prev.year}Q${prev.quarter}`;
             const beginningRow = csvData.find(row => row.quarter === beginningQtr);
-            const beginningDebtToGDP = beginningRow ? beginningRow.mv_debt_to_GDP : 0;
+            const beginningDebtToGDP = beginningRow && beginningRow.mv_debt_to_GDP ? beginningRow.mv_debt_to_GDP : 0;
             
-            const endingRow = filtered[filtered.length - 1];
-            const endingDebtToGDP = endingRow ? endingRow.mv_debt_to_GDP : 0;
+            const endingRow = csvData.find(row => row.quarter === endQtr);
+            const endingDebtToGDP = endingRow && endingRow.mv_debt_to_GDP ? endingRow.mv_debt_to_GDP : 0;
             
             const statsHtml = `
                 <strong>Final Cumulative Values (${endQtr})</strong>
