@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>US Debt Financing Decomposition</title>
+    <title>US Debt Decomposer</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * { box-sizing: border-box; }
@@ -135,6 +135,9 @@
             border-radius: 4px;
             border-left: 3px solid #1f77b4;
         }
+        .stat-item.spaced {
+            margin-top: 16px;
+        }
         .stat-label {
             font-weight: 600;
             color: #555;
@@ -154,7 +157,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>US Debt Financing Decomposition</h1>
+        <h1>US Debt Decomposer</h1>
         <p class="subtitle">What contributed to movements in the US's debt-to-GDP ratio?</p>
 
         <div class="note">
@@ -423,11 +426,11 @@
                         <div class="stat-label">${firstVar}</div>
                         <div class="stat-value">${cumulative[firstVar][cumulative[firstVar].length - 1].toFixed(4)}</div>
                     </div>
-                    <div class="stat-item">
+                    <div class="stat-item spaced">
                         <div class="stat-label">Beginning Debt-to-GDP (${beginningQtr})</div>
                         <div class="stat-value">${beginningDebtToGDP.toFixed(4)}</div>
                     </div>
-                    <div class="stat-item">
+                    <div class="stat-item spaced">
                         <div class="stat-label">Ending Debt-to-GDP (${endQtr})</div>
                         <div class="stat-value">${endingDebtToGDP.toFixed(4)}</div>
                     </div>
