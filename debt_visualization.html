@@ -118,9 +118,23 @@
         }
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            grid-template-columns: repeat(4, 1fr);
             gap: 12px;
             margin-top: 12px;
+        }
+        @media (max-width: 900px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        .stat-item.first-row-left {
+            grid-column: 1;
+        }
+        .stat-item.first-row-center {
+            grid-column: 3;
+        }
+        .stat-item.first-row-right {
+            grid-column: 4;
         }
         .financed-by {
             grid-column: 1 / -1;
@@ -134,9 +148,6 @@
             background: white;
             border-radius: 4px;
             border-left: 3px solid #1f77b4;
-        }
-        .stat-item.spaced {
-            margin-top: 16px;
         }
         .stat-label {
             font-weight: 600;
@@ -422,15 +433,15 @@
             const statsHtml = `
                 <strong>Final Cumulative Values (${endQtr})</strong>
                 <div class="stats-grid">
-                    <div class="stat-item">
+                    <div class="stat-item first-row-left">
                         <div class="stat-label">${firstVar}</div>
                         <div class="stat-value">${cumulative[firstVar][cumulative[firstVar].length - 1].toFixed(4)}</div>
                     </div>
-                    <div class="stat-item spaced">
+                    <div class="stat-item first-row-center">
                         <div class="stat-label">Beginning Debt-to-GDP (${beginningQtr})</div>
                         <div class="stat-value">${beginningDebtToGDP.toFixed(4)}</div>
                     </div>
-                    <div class="stat-item spaced">
+                    <div class="stat-item first-row-right">
                         <div class="stat-label">Ending Debt-to-GDP (${endQtr})</div>
                         <div class="stat-value">${endingDebtToGDP.toFixed(4)}</div>
                     </div>
@@ -451,3 +462,4 @@
     </script>
 </body>
 </html>
+
