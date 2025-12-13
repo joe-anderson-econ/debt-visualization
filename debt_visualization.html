@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>US Debt Financing Decomposition</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            margin: 0 0 10px 0;
+            color: #222;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 24px;
+        }
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 6px;
+        }
+        .control-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #333;
+            font-size: 13px;
+        }
+        select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            background: white;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 4px;
+        }
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        .checkbox-group label {
+            margin: 0;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .chart-container {
+            position: relative;
+            height: 500px;
+            margin-bottom: 20px;
+        }
+        .stats {
+            margin-top: 20px;
+            padding: 16px;
+            background: #f9f9f9;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+        .stat-item {
+            padding: 8px;
+            background: white;
+            border-radius: 4px;
+            border-left: 3px solid #1f77b4;
+        }
+        .stat-label {
+            font-weight: 600;
+            color: #555;
+            font-size: 12px;
+        }
+        .stat-value {
+            font-size: 15px;
+            font-weight: 700;
+            color: #222;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>US Debt Financing Decomposition</h1>
+        <p class="subtitle">Interactive visualization of budget decomposition data</p>
+
+        <div class="controls">
+            <div class="control-row">
+                <div class="control-group">
+                    <label>Start Year</label>
+                    <select id="startYear"></select>
+                </div>
+                <div class="control-group">
+                    <label>Start Quarter</label>
+                    <select id="startQuarter">
+                        <option value="1">Q1</option>
+                        <option value="2">Q2</option>
+                        <option value="3">Q3</option>
+                        <option value="4">Q4</option>
+                    </select>
+                </div>
+            </div>
+            <div class="control-row">
+                <div class="control-group">
+                    <label>End Year</label>
+                    <select id="endYear"></select>
+                </div>
+                <div class="control-group">
+                    <label>End Quarter</label>
+                    <select id="endQuarter">
+                        <option value="1">Q1</option>
+                        <option value="2">Q2</option>
+                        <option value="3">Q3</option>
+                        <option value="4">Q4</option>
+                    </select>
+                </div>
+            </div>
+            <div class="control-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="excludeSmall" checked>
+                    <label for="excludeSmall">Exclude small series (&lt;1%)</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <canvas id="myChart"></canvas>
+        </div>
+
+        <div class="stats" id="statsContainer"></div>
+    </div>
+
+    <script>
+        // CSV data will be loaded from external file
+        let csvData = [];
+        let myChart = null;
+
+        const COLORS = ['#1f77b4', '#d62728', '#ff7f0e', '#2ca02c', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f'];
+        const MAGNITUDE_THRESHOLD = 0.01;
+
+        const VARIABLE_MAPPING = {
+            'LHS': 'DebtToGDP',
+            'primary_deficit': 'PrimaryDeficit',
+            'return_treasury': 'IntOnTreasuries',
+            'inflation_effect': 'Inflation',
+            'growth_effect': 'Growth',
+            'return_reserves': 'IntOnReserves',
+            'return_revrepo': 'IntOnRevRepos'
+        };
+
+        const DISPLAY_ORDER = [
+            'DebtToGDP', 'PrimaryDeficit', 'IntOnTreasuries',
+            'Inflation', 'Growth', 'IntOnReserves', 'IntOnRevRepos'
+        ];
+
+        // Parse CSV
+        function parseCSV(text) {
+            const lines = text.trim().split('\n');
+            const headers = lines[0].split(',');
+            return lines.slice(1).map(line => {
+                const values = line.split(',');
+                const row = {};
+                headers.forEach((header, i) => {
+                    const value = values[i];
+                    row[header] = isNaN(value) || value === '' ? value : parseFloat(value);
+                });
+                return row;
+            });
+        }
+
+        // Load CSV data
+        async function loadData() {
+            try {
+                const response = await fetch('output_budget_decomposition.csv');
+                const text = await response.text();
+                csvData = parseCSV(text);
+                
+                // Initialize year dropdowns
+                const years = [...new Set(csvData.map(row => parseInt(row.quarter.split('Q')[0])))].sort();
+                const startYearSelect = document.getElementById('startYear');
+                const endYearSelect = document.getElementById('endYear');
+                
+                years.forEach(year => {
+                    startYearSelect.add(new Option(year, year));
+                    endYearSelect.add(new Option(year, year));
+                });
+                
+                // Set defaults
+                startYearSelect.value = '2020';
+                document.getElementById('startQuarter').value = '1';
+                endYearSelect.value = '2025';
+                document.getElementById('endQuarter').value = '2';
+                
+                // Add event listeners
+                document.getElementById('startYear').addEventListener('change', updateChart);
+                document.getElementById('startQuarter').addEventListener('change', updateChart);
+                document.getElementById('endYear').addEventListener('change', updateChart);
+                document.getElementById('endQuarter').addEventListener('change', updateChart);
+                document.getElementById('excludeSmall').addEventListener('change', updateChart);
+                
+                updateChart();
+            } catch (error) {
+                alert('Error loading data: ' + error.message + '\n\nMake sure output_budget_decomposition.csv is in the same directory.');
+            }
+        }
+
+        function getPreviousQuarter(year, quarter) {
+            if (quarter === 1) return { year: year - 1, quarter: 4 };
+            return { year, quarter: quarter - 1 };
+        }
+
+        function updateChart() {
+            const startYear = parseInt(document.getElementById('startYear').value);
+            const startQuarter = parseInt(document.getElementById('startQuarter').value);
+            const endYear = parseInt(document.getElementById('endYear').value);
+            const endQuarter = parseInt(document.getElementById('endQuarter').value);
+            const excludeSmall = document.getElementById('excludeSmall').checked;
+
+            const startQtr = `${startYear}Q${startQuarter}`;
+            const endQtr = `${endYear}Q${endQuarter}`;
+
+            // Filter data
+            const filtered = csvData.filter(row => row.quarter >= startQtr && row.quarter <= endQtr);
+            
+            if (filtered.length === 0) {
+                alert('No data for selected range');
+                return;
+            }
+
+            // Add initial zero point
+            const prev = getPreviousQuarter(startYear, startQuarter);
+            const initialRow = { quarter: `${prev.year}Q${prev.quarter}` };
+            Object.keys(VARIABLE_MAPPING).forEach(key => initialRow[key] = 0);
+            
+            const dataWithInitial = [initialRow, ...filtered];
+
+            // Calculate cumulative sums
+            const cumulative = {};
+            const maxAbsValues = {};
+            const displayToCSV = Object.fromEntries(
+                Object.entries(VARIABLE_MAPPING).map(([k, v]) => [v, k])
+            );
+
+            DISPLAY_ORDER.forEach(displayName => {
+                const csvName = displayToCSV[displayName];
+                let sum = 0;
+                cumulative[displayName] = dataWithInitial.map(row => {
+                    sum += (row[csvName] || 0);
+                    return sum;
+                });
+                maxAbsValues[displayName] = Math.max(...cumulative[displayName].map(Math.abs));
+            });
+
+            // Filter variables
+            let variablesToPlot = excludeSmall
+                ? DISPLAY_ORDER.filter(name => maxAbsValues[name] > MAGNITUDE_THRESHOLD)
+                : DISPLAY_ORDER;
+
+            // Prepare chart data
+            const labels = dataWithInitial.map(row => row.quarter);
+            const datasets = variablesToPlot.map((varName, idx) => ({
+                label: varName,
+                data: cumulative[varName],
+                borderColor: COLORS[idx % COLORS.length],
+                backgroundColor: COLORS[idx % COLORS.length],
+                borderWidth: 2,
+                fill: false,
+                tension: 0.1
+            }));
+
+            // Update or create chart
+            const ctx = document.getElementById('myChart').getContext('2d');
+            
+            if (myChart) {
+                myChart.destroy();
+            }
+
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: { labels, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: `US Debt Financing Decomposition (${startQtr} to ${endQtr})`,
+                            font: { size: 16, weight: 'bold' }
+                        },
+                        legend: {
+                            display: true,
+                            position: 'bottom'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Cumulative Value'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    }
+                }
+            });
+
+            // Update stats
+            const statsHtml = `
+                <strong>Final Cumulative Values (${endQtr})</strong>
+                <div class="stats-grid">
+                    ${variablesToPlot.map(varName => `
+                        <div class="stat-item">
+                            <div class="stat-label">${varName}</div>
+                            <div class="stat-value">${cumulative[varName][cumulative[varName].length - 1].toFixed(4)}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            document.getElementById('statsContainer').innerHTML = statsHtml;
+        }
+
+        // Load data on page load
+        window.addEventListener('load', loadData);
+    </script>
+</body>
+</html>
