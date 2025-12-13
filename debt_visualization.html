@@ -407,9 +407,14 @@
             const firstVar = variablesToPlot[0];
             const remainingVars = variablesToPlot.slice(1);
             
-            // Get beginning and ending Debt-to-GDP values
-            const beginningDebtToGDP = dataWithInitial[0].mv_debt_to_GDP || 0;
-            const endingDebtToGDP = dataWithInitial[dataWithInitial.length - 1].mv_debt_to_GDP || 0;
+            // Get beginning and ending Debt-to-GDP values from actual CSV data
+            const prev = getPreviousQuarter(startYear, startQuarter);
+            const beginningQtr = `${prev.year}Q${prev.quarter}`;
+            const beginningRow = csvData.find(row => row.quarter === beginningQtr);
+            const beginningDebtToGDP = beginningRow ? beginningRow.mv_debt_to_GDP : 0;
+            
+            const endingRow = filtered[filtered.length - 1];
+            const endingDebtToGDP = endingRow ? endingRow.mv_debt_to_GDP : 0;
             
             const statsHtml = `
                 <strong>Final Cumulative Values (${endQtr})</strong>
@@ -419,7 +424,7 @@
                         <div class="stat-value">${cumulative[firstVar][cumulative[firstVar].length - 1].toFixed(4)}</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-label">Beginning Debt-to-GDP (${dataWithInitial[0].quarter})</div>
+                        <div class="stat-label">Beginning Debt-to-GDP (${beginningQtr})</div>
                         <div class="stat-value">${beginningDebtToGDP.toFixed(4)}</div>
                     </div>
                     <div class="stat-item">
@@ -443,8 +448,3 @@
     </script>
 </body>
 </html>
-
-
-
-
-
