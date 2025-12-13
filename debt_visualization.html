@@ -38,9 +38,6 @@
             font-size: 14px;
             color: #333;
         }
-        .note strong {
-            color: #1f77b4;
-        }
         .controls {
             display: flex;
             flex-direction: column;
@@ -108,16 +105,20 @@
             border-radius: 4px;
             font-size: 13px;
             color: #555;
-            text-align: center;
-        }
-        .methodology strong {
-            color: #333;
+            text-align: left;
         }
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 12px;
             margin-top: 12px;
+        }
+        .financed-by {
+            grid-column: 1 / -1;
+            font-style: italic;
+            color: #666;
+            padding: 8px 0 4px 0;
+            font-size: 13px;
         }
         .stat-item {
             padding: 8px;
@@ -145,10 +146,10 @@
 <body>
     <div class="container">
         <h1>US Debt Financing Decomposition</h1>
-        <p class="subtitle">What contributed to movements in the US's debt-to-GDP ratio over time?</p>
+        <p class="subtitle">What contributed to movements in the US's debt-to-GDP ratio?</p>
 
         <div class="note">
-            <strong>Note:</strong> The cumulative change of Debt-to-GDP equals the sum of changes to all other series.
+            Note: The cumulative change of Debt-to-GDP equals the sum of changes to all other series.
         </div>
 
         <div class="controls">
@@ -197,7 +198,7 @@
         <div class="stats" id="statsContainer"></div>
 
         <div class="methodology">
-            <strong>Methodology:</strong> Based on Hall and Sargent (2022)
+            Methodology based on Hall and Sargent (2022)
         </div>
     </div>
 
@@ -210,18 +211,18 @@
         const MAGNITUDE_THRESHOLD = 0.01;
 
         const VARIABLE_MAPPING = {
-            'LHS': 'DebtToGDP',
-            'primary_deficit': 'PrimaryDeficit',
-            'return_treasury': 'IntOnTreasuries',
+            'LHS': 'Change to Debt-to-GDP',
+            'primary_deficit': 'Primary Deficit',
+            'return_treasury': 'Returns on Treasuries',
             'inflation_effect': 'Inflation',
             'growth_effect': 'Growth',
-            'return_reserves': 'IntOnReserves',
-            'return_revrepo': 'IntOnRevRepos'
+            'return_reserves': 'Interest on Reserves',
+            'return_revrepo': 'Interest on Reserve Repos'
         };
 
         const DISPLAY_ORDER = [
-            'DebtToGDP', 'PrimaryDeficit', 'IntOnTreasuries',
-            'Inflation', 'Growth', 'IntOnReserves', 'IntOnRevRepos'
+            'Change to Debt-to-GDP', 'Primary Deficit', 'Returns on Treasuries',
+            'Inflation', 'Growth', 'Interest on Reserves', 'Interest on Reserve Repos'
         ];
 
         // Parse CSV
@@ -390,10 +391,18 @@
             });
 
             // Update stats
+            const firstVar = variablesToPlot[0];
+            const remainingVars = variablesToPlot.slice(1);
+            
             const statsHtml = `
                 <strong>Final Cumulative Values (${endQtr})</strong>
                 <div class="stats-grid">
-                    ${variablesToPlot.map(varName => `
+                    <div class="stat-item">
+                        <div class="stat-label">${firstVar}</div>
+                        <div class="stat-value">${cumulative[firstVar][cumulative[firstVar].length - 1].toFixed(4)}</div>
+                    </div>
+                    <div class="financed-by">financed by</div>
+                    ${remainingVars.map(varName => `
                         <div class="stat-item">
                             <div class="stat-label">${varName}</div>
                             <div class="stat-value">${cumulative[varName][cumulative[varName].length - 1].toFixed(4)}</div>
@@ -409,5 +418,6 @@
     </script>
 </body>
 </html>
+
 
 
