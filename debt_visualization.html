@@ -407,12 +407,24 @@
             const firstVar = variablesToPlot[0];
             const remainingVars = variablesToPlot.slice(1);
             
+            // Get beginning and ending Debt-to-GDP values
+            const beginningDebtToGDP = dataWithInitial[0].mv_debt_to_GDP || 0;
+            const endingDebtToGDP = dataWithInitial[dataWithInitial.length - 1].mv_debt_to_GDP || 0;
+            
             const statsHtml = `
                 <strong>Final Cumulative Values (${endQtr})</strong>
                 <div class="stats-grid">
                     <div class="stat-item">
                         <div class="stat-label">${firstVar}</div>
                         <div class="stat-value">${cumulative[firstVar][cumulative[firstVar].length - 1].toFixed(4)}</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Beginning Debt-to-GDP (${dataWithInitial[0].quarter})</div>
+                        <div class="stat-value">${beginningDebtToGDP.toFixed(4)}</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Ending Debt-to-GDP (${endQtr})</div>
+                        <div class="stat-value">${endingDebtToGDP.toFixed(4)}</div>
                     </div>
                     <div class="financed-by">financed by</div>
                     ${remainingVars.map(varName => `
@@ -431,6 +443,7 @@
     </script>
 </body>
 </html>
+
 
 
 
