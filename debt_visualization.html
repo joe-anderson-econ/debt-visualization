@@ -184,10 +184,6 @@
                 <div class="control-group">
                     <label>Start Quarter</label>
                     <select id="startQuarter">
-                        <option value="1">Q1</option>
-                        <option value="2">Q2</option>
-                        <option value="3">Q3</option>
-                        <option value="4">Q4</option>
                     </select>
                 </div>
             </div>
@@ -199,10 +195,6 @@
                 <div class="control-group">
                     <label>End Quarter</label>
                     <select id="endQuarter">
-                        <option value="1">Q1</option>
-                        <option value="2">Q2</option>
-                        <option value="3">Q3</option>
-                        <option value="4">Q4</option>
                     </select>
                 </div>
             </div>
@@ -284,16 +276,73 @@
                     endYearSelect.add(new Option(year, year));
                 });
                 
+                // Build mapping of years to available quarters
+                const yearToQuarters = {};
+                csvData.forEach(row => {
+                    const [year, quarter] = row.quarter.split('Q');
+                    const yearNum = parseInt(year);
+                    const quarterNum = parseInt(quarter);
+                    if (!yearToQuarters[yearNum]) {
+                        yearToQuarters[yearNum] = [];
+                    }
+                    if (!yearToQuarters[yearNum].includes(quarterNum)) {
+                        yearToQuarters[yearNum].push(quarterNum);
+                    }
+                });
+                
+                // Sort quarters for each year
+                Object.keys(yearToQuarters).forEach(year => {
+                    yearToQuarters[year].sort((a, b) => a - b);
+                });
+                
+                // Function to populate quarter dropdown based on selected year
+                function populateQuarterDropdown(yearSelectId, quarterSelectId) {
+                    const yearSelect = document.getElementById(yearSelectId);
+                    const quarterSelect = document.getElementById(quarterSelectId);
+                    const selectedYear = parseInt(yearSelect.value);
+                    const currentQuarter = quarterSelect.value;
+                    
+                    // Clear existing options
+                    quarterSelect.innerHTML = '';
+                    
+                    // Add available quarters for the selected year
+                    const availableQuarters = yearToQuarters[selectedYear] || [1, 2, 3, 4];
+                    availableQuarters.forEach(q => {
+                        quarterSelect.add(new Option(`Q${q}`, q));
+                    });
+                    
+                    // Try to keep the same quarter if available, otherwise select the last available quarter
+                    if (currentQuarter && availableQuarters.includes(parseInt(currentQuarter))) {
+                        quarterSelect.value = currentQuarter;
+                    } else {
+                        quarterSelect.value = availableQuarters[availableQuarters.length - 1];
+                    }
+                }
+                
                 // Set defaults
                 startYearSelect.value = '2020';
-                document.getElementById('startQuarter').value = '1';
                 endYearSelect.value = '2025';
+                
+                // Populate quarter dropdowns for default years
+                populateQuarterDropdown('startYear', 'startQuarter');
+                populateQuarterDropdown('endYear', 'endQuarter');
+                
+                // Set default quarters
+                document.getElementById('startQuarter').value = '1';
                 document.getElementById('endQuarter').value = '2';
                 
-                // Add event listeners
-                document.getElementById('startYear').addEventListener('change', updateChart);
+                // Add event listeners for year changes to update quarter dropdowns
+                document.getElementById('startYear').addEventListener('change', () => {
+                    populateQuarterDropdown('startYear', 'startQuarter');
+                    updateChart();
+                });
+                document.getElementById('endYear').addEventListener('change', () => {
+                    populateQuarterDropdown('endYear', 'endQuarter');
+                    updateChart();
+                });
+                
+                // Add event listeners for quarter changes and checkbox
                 document.getElementById('startQuarter').addEventListener('change', updateChart);
-                document.getElementById('endYear').addEventListener('change', updateChart);
                 document.getElementById('endQuarter').addEventListener('change', updateChart);
                 document.getElementById('excludeSmall').addEventListener('change', updateChart);
                 
