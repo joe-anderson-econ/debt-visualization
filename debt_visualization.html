@@ -69,9 +69,6 @@
             font-size: 14px;
             background: white;
         }
-        select option:disabled {
-            color: #999;
-        }
         .checkbox-group {
             display: flex;
             align-items: center;
@@ -186,12 +183,7 @@
                 </div>
                 <div class="control-group">
                     <label>Start Quarter</label>
-                    <select id="startQuarter">
-                        <option value="1">Q1</option>
-                        <option value="2">Q2</option>
-                        <option value="3">Q3</option>
-                        <option value="4">Q4</option>
-                    </select>
+                    <select id="startQuarter"></select>
                 </div>
             </div>
             <div class="control-row">
@@ -201,12 +193,7 @@
                 </div>
                 <div class="control-group">
                     <label>End Quarter</label>
-                    <select id="endQuarter">
-                        <option value="1">Q1</option>
-                        <option value="2">Q2</option>
-                        <option value="3">Q3</option>
-                        <option value="4">Q4</option>
-                    </select>
+                    <select id="endQuarter"></select>
                 </div>
             </div>
             <div class="control-group">
@@ -288,27 +275,26 @@
             const quarterSelect = document.getElementById(quarterSelectId);
             const currentValue = quarterSelect.value;
             
-            // Enable/disable quarters based on availability
-            for (let i = 0; i < quarterSelect.options.length; i++) {
-                const option = quarterSelect.options[i];
-                const quarter = option.value;
-                const quarterKey = `${year}Q${quarter}`;
-                
+            // Clear all options
+            quarterSelect.innerHTML = '';
+            
+            // Add only available quarters for the selected year
+            const availableQuartersForYear = [];
+            for (let q = 1; q <= 4; q++) {
+                const quarterKey = `${year}Q${q}`;
                 if (availableQuarters.has(quarterKey)) {
-                    option.disabled = false;
-                } else {
-                    option.disabled = true;
+                    availableQuartersForYear.push(q);
+                    quarterSelect.add(new Option(`Q${q}`, q));
                 }
             }
             
-            // If currently selected quarter is now disabled, select the first available one
-            if (quarterSelect.options[parseInt(currentValue) - 1].disabled) {
-                for (let i = 0; i < quarterSelect.options.length; i++) {
-                    if (!quarterSelect.options[i].disabled) {
-                        quarterSelect.value = quarterSelect.options[i].value;
-                        break;
-                    }
-                }
+            // Set the quarter value
+            if (availableQuartersForYear.includes(parseInt(currentValue))) {
+                // Current value is still available
+                quarterSelect.value = currentValue;
+            } else {
+                // Current value not available, select the last available quarter for this year
+                quarterSelect.value = availableQuartersForYear[availableQuartersForYear.length - 1];
             }
         }
 
@@ -339,15 +325,17 @@
                 const latestYear = parseInt(latestQuarter.split('Q')[0]);
                 const latestQ = parseInt(latestQuarter.split('Q')[1]);
                 
-                // Set defaults
+                // Set year defaults first
                 startYearSelect.value = '2020';
-                document.getElementById('startQuarter').value = '1';
                 endYearSelect.value = latestYear.toString();
-                document.getElementById('endQuarter').value = latestQ.toString();
                 
-                // Update quarter dropdowns to reflect available data
+                // Update quarter dropdowns to reflect available data for these years
                 updateQuarterOptions('startYear', 'startQuarter');
                 updateQuarterOptions('endYear', 'endQuarter');
+                
+                // Now set quarter defaults (after dropdowns are populated)
+                document.getElementById('startQuarter').value = '1';
+                document.getElementById('endQuarter').value = latestQ.toString();
                 
                 // Add event listeners
                 document.getElementById('startYear').addEventListener('change', () => {
@@ -400,6 +388,9 @@
                 alert('No data for selected range');
                 return;
             }
+
+            // Get the actual last quarter with data in the filtered range
+            const actualEndQtr = filtered[filtered.length - 1].quarter;
 
             // Add initial zero point
             const prev = getPreviousQuarter(startYear, startQuarter);
@@ -458,7 +449,7 @@
                     plugins: {
                         title: {
                             display: true,
-                            text: `US Debt Financing Decomposition (${startQtr} to ${endQtr})`,
+                            text: `US Debt Financing Decomposition (${startQtr} to ${actualEndQtr})`,
                             font: { size: 16, weight: 'bold' }
                         },
                         legend: {
@@ -502,11 +493,11 @@
             const beginningRow = csvData.find(row => row.quarter === beginningQtr);
             const beginningDebtToGDP = beginningRow && beginningRow.mv_debt_to_GDP ? beginningRow.mv_debt_to_GDP : 0;
             
-            const endingRow = csvData.find(row => row.quarter === endQtr);
+            const endingRow = csvData.find(row => row.quarter === actualEndQtr);
             const endingDebtToGDP = endingRow && endingRow.mv_debt_to_GDP ? endingRow.mv_debt_to_GDP : 0;
             
             const statsHtml = `
-                <strong>Final Cumulative Values (${endQtr})</strong>
+                <strong>Final Cumulative Values (${actualEndQtr})</strong>
                 <div class="stats-grid">
                     <div class="stat-item first-row-left">
                         <div class="stat-label">${firstVar}</div>
@@ -517,7 +508,7 @@
                         <div class="stat-value">${beginningDebtToGDP.toFixed(4)}</div>
                     </div>
                     <div class="stat-item first-row-right">
-                        <div class="stat-label">Ending Debt-to-GDP (${endQtr})</div>
+                        <div class="stat-label">Ending Debt-to-GDP (${actualEndQtr})</div>
                         <div class="stat-value">${endingDebtToGDP.toFixed(4)}</div>
                     </div>
                     <div class="financed-by">financed by</div>
