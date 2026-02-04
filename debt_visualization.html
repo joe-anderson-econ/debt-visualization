@@ -183,7 +183,12 @@
                 </div>
                 <div class="control-group">
                     <label>Start Quarter</label>
-                    <select id="startQuarter"></select>
+                    <select id="startQuarter">
+                        <option value="1">Q1</option>
+                        <option value="2">Q2</option>
+                        <option value="3">Q3</option>
+                        <option value="4">Q4</option>
+                    </select>
                 </div>
             </div>
             <div class="control-row">
@@ -193,7 +198,12 @@
                 </div>
                 <div class="control-group">
                     <label>End Quarter</label>
-                    <select id="endQuarter"></select>
+                    <select id="endQuarter">
+                        <option value="1">Q1</option>
+                        <option value="2">Q2</option>
+                        <option value="3">Q3</option>
+                        <option value="4">Q4</option>
+                    </select>
                 </div>
             </div>
             <div class="control-group">
@@ -208,50 +218,38 @@
             <canvas id="myChart"></canvas>
         </div>
 
-        <div id="statsContainer" class="stats"></div>
-
-        <div class="methodology">
-            <strong>Methodology:</strong>
-            The methodology underlying this visualization is described in <a href="Anderson_Debt_to_GDP_Method.pdf" target="_blank">Anderson_Debt_to_GDP_Method.pdf</a>.
-        </div>
+        <div class="stats" id="statsContainer"></div>
 
         <div class="sources">
-            <strong>Data Sources:</strong> Federal Reserve Economic Data (FRED), U.S. Bureau of Economic Analysis (BEA)
+            Sources: Fed Board of Governors; Dallas Fed; Bureau of Economic Analysis; Center for Financial Stability
+        </div>
+
+        <div class="methodology">
+            Methodology based on Hall and Sargent (2022)
         </div>
     </div>
 
     <script>
-        let myChart = null;
+        // CSV data will be loaded from external file
         let csvData = [];
-        let availableQuarters = new Set(); // Track all available quarters
+        let myChart = null;
 
-        const MAGNITUDE_THRESHOLD = 1;
+        const COLORS = ['#1f77b4', '#d62728', '#ff7f0e', '#2ca02c', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f'];
+        const MAGNITUDE_THRESHOLD = 0.01;
 
         const VARIABLE_MAPPING = {
-            'LHS': 'Debt-to-GDP',
-            'return_reserves': 'Return on Reserves',
-            'return_revrepo': 'Return on Reverse Repos',
-            'return_treasury': 'Return on Treasury Securities',
-            'inflation_effect': 'Inflation Effect',
-            'growth_effect': 'Growth Effect',
-            'residual_total': 'Residuals',
-            'primary_deficit': 'Primary Deficit'
+            'LHS': 'Change to Debt-to-GDP',
+            'primary_deficit': 'Primary Deficit',
+            'return_treasury': 'Returns on Treasuries',
+            'inflation_effect': 'Inflation',
+            'growth_effect': 'Growth',
+            'return_reserves': 'Interest on Reserves',
+            'return_revrepo': 'Interest on Reserve Repos'
         };
 
         const DISPLAY_ORDER = [
-            'Debt-to-GDP',
-            'Primary Deficit',
-            'Return on Reserves',
-            'Return on Reverse Repos',
-            'Return on Treasury Securities',
-            'Inflation Effect',
-            'Growth Effect',
-            'Residuals'
-        ];
-
-        const COLORS = [
-            '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728',
-            '#9467bd', '#8c564b', '#e377c2', '#7f7f7f'
+            'Change to Debt-to-GDP', 'Primary Deficit', 'Returns on Treasuries',
+            'Inflation', 'Growth', 'Interest on Reserves', 'Interest on Reserve Repos'
         ];
 
         // Parse CSV
@@ -269,35 +267,6 @@
             });
         }
 
-        // Update available quarters in the dropdown based on selected year
-        function updateQuarterOptions(yearSelectId, quarterSelectId) {
-            const year = parseInt(document.getElementById(yearSelectId).value);
-            const quarterSelect = document.getElementById(quarterSelectId);
-            const currentValue = quarterSelect.value;
-            
-            // Clear all options
-            quarterSelect.innerHTML = '';
-            
-            // Add only available quarters for the selected year
-            const availableQuartersForYear = [];
-            for (let q = 1; q <= 4; q++) {
-                const quarterKey = `${year}Q${q}`;
-                if (availableQuarters.has(quarterKey)) {
-                    availableQuartersForYear.push(q);
-                    quarterSelect.add(new Option(`Q${q}`, q));
-                }
-            }
-            
-            // Set the quarter value
-            if (availableQuartersForYear.includes(parseInt(currentValue))) {
-                // Current value is still available
-                quarterSelect.value = currentValue;
-            } else {
-                // Current value not available, select the last available quarter for this year
-                quarterSelect.value = availableQuartersForYear[availableQuartersForYear.length - 1];
-            }
-        }
-
         // Load CSV data
         async function loadData() {
             try {
@@ -305,12 +274,7 @@
                 const text = await response.text();
                 csvData = parseCSV(text);
                 
-                // Build set of available quarters
-                csvData.forEach(row => {
-                    availableQuarters.add(row.quarter);
-                });
-                
-                // Initialize year dropdowns with only years that have data
+                // Initialize year dropdowns
                 const years = [...new Set(csvData.map(row => parseInt(row.quarter.split('Q')[0])))].sort();
                 const startYearSelect = document.getElementById('startYear');
                 const endYearSelect = document.getElementById('endYear');
@@ -320,33 +284,16 @@
                     endYearSelect.add(new Option(year, year));
                 });
                 
-                // Get the latest available quarter for default end date
-                const latestQuarter = csvData[csvData.length - 1].quarter;
-                const latestYear = parseInt(latestQuarter.split('Q')[0]);
-                const latestQ = parseInt(latestQuarter.split('Q')[1]);
-                
-                // Set year defaults first
+                // Set defaults
                 startYearSelect.value = '2020';
-                endYearSelect.value = latestYear.toString();
-                
-                // Update quarter dropdowns to reflect available data for these years
-                updateQuarterOptions('startYear', 'startQuarter');
-                updateQuarterOptions('endYear', 'endQuarter');
-                
-                // Now set quarter defaults (after dropdowns are populated)
                 document.getElementById('startQuarter').value = '1';
-                document.getElementById('endQuarter').value = latestQ.toString();
+                endYearSelect.value = '2025';
+                document.getElementById('endQuarter').value = '2';
                 
                 // Add event listeners
-                document.getElementById('startYear').addEventListener('change', () => {
-                    updateQuarterOptions('startYear', 'startQuarter');
-                    updateChart();
-                });
+                document.getElementById('startYear').addEventListener('change', updateChart);
                 document.getElementById('startQuarter').addEventListener('change', updateChart);
-                document.getElementById('endYear').addEventListener('change', () => {
-                    updateQuarterOptions('endYear', 'endQuarter');
-                    updateChart();
-                });
+                document.getElementById('endYear').addEventListener('change', updateChart);
                 document.getElementById('endQuarter').addEventListener('change', updateChart);
                 document.getElementById('excludeSmall').addEventListener('change', updateChart);
                 
@@ -371,16 +318,6 @@
             const startQtr = `${startYear}Q${startQuarter}`;
             const endQtr = `${endYear}Q${endQuarter}`;
 
-            // Validate that the selected quarters exist in the data
-            if (!availableQuarters.has(startQtr)) {
-                alert(`No data available for ${startQtr}. Please select a different start date.`);
-                return;
-            }
-            if (!availableQuarters.has(endQtr)) {
-                alert(`No data available for ${endQtr}. Please select a different end date.`);
-                return;
-            }
-
             // Filter data
             const filtered = csvData.filter(row => row.quarter >= startQtr && row.quarter <= endQtr);
             
@@ -388,9 +325,6 @@
                 alert('No data for selected range');
                 return;
             }
-
-            // Get the actual last quarter with data in the filtered range
-            const actualEndQtr = filtered[filtered.length - 1].quarter;
 
             // Add initial zero point
             const prev = getPreviousQuarter(startYear, startQuarter);
@@ -449,7 +383,7 @@
                     plugins: {
                         title: {
                             display: true,
-                            text: `US Debt Financing Decomposition (${startQtr} to ${actualEndQtr})`,
+                            text: `US Debt Financing Decomposition (${startQtr} to ${endQtr})`,
                             font: { size: 16, weight: 'bold' }
                         },
                         legend: {
@@ -493,11 +427,11 @@
             const beginningRow = csvData.find(row => row.quarter === beginningQtr);
             const beginningDebtToGDP = beginningRow && beginningRow.mv_debt_to_GDP ? beginningRow.mv_debt_to_GDP : 0;
             
-            const endingRow = csvData.find(row => row.quarter === actualEndQtr);
+            const endingRow = csvData.find(row => row.quarter === endQtr);
             const endingDebtToGDP = endingRow && endingRow.mv_debt_to_GDP ? endingRow.mv_debt_to_GDP : 0;
             
             const statsHtml = `
-                <strong>Final Cumulative Values (${actualEndQtr})</strong>
+                <strong>Final Cumulative Values (${endQtr})</strong>
                 <div class="stats-grid">
                     <div class="stat-item first-row-left">
                         <div class="stat-label">${firstVar}</div>
@@ -508,7 +442,7 @@
                         <div class="stat-value">${beginningDebtToGDP.toFixed(4)}</div>
                     </div>
                     <div class="stat-item first-row-right">
-                        <div class="stat-label">Ending Debt-to-GDP (${actualEndQtr})</div>
+                        <div class="stat-label">Ending Debt-to-GDP (${endQtr})</div>
                         <div class="stat-value">${endingDebtToGDP.toFixed(4)}</div>
                     </div>
                     <div class="financed-by">financed by</div>
@@ -528,3 +462,6 @@
     </script>
 </body>
 </html>
+
+
+
